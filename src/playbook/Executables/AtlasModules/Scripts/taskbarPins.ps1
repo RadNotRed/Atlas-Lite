@@ -5,6 +5,20 @@ $windir = [Environment]::GetFolderPath('Windows')
 Set-Location "$windir\AtlasModules\Scripts"
 ..\initPowerShell.ps1
 
+function Get-ProfilePathFromSid {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Sid
+    )
+
+    $profilePath = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$Sid" -Name ProfileImagePath -ErrorAction SilentlyContinue).ProfileImagePath
+    if ([string]::IsNullOrEmpty($profilePath)) {
+        return $null
+    }
+
+    return [Environment]::ExpandEnvironmentVariables($profilePath)
+}
+
 # The names are used for the shortcuts in the taskbar
 # If they're changed, e.g. 'Brave', then you need new Favorites & FavoritesResolve
 # However, only changing the path seems to not be an issue
@@ -94,13 +108,23 @@ foreach ($entry in $regTaskbar.GetEnumerator()) {
 $taskBarLocation = 'Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar'
 $rootKey = 'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Taskband'
 
+Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
+Start-Sleep -Milliseconds 500
+
 # Clearing taskbar, copying the shortcut, setting registry
 foreach ($userKey in (Get-RegUserPaths -NoDefault).PsPath) {
     $sid = Split-Path $userKey -Leaf
     $appData = Get-ItemPropertyValue "$userKey\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" -Name 'AppData' -EA 0
 
-    if ([string]::IsNullOrEmpty($appData) -or !(Test-Path $appData)) {
-        Write-Error "Couldn't find AppData value for $sid!"
+    if ([string]::IsNullOrEmpty($appData) -or !(Test-Path $appData -PathType Container)) {
+        $profilePath = Get-ProfilePathFromSid -Sid $sid
+        if (![string]::IsNullOrEmpty($profilePath)) {
+            $appData = Join-Path $profilePath 'AppData\Roaming'
+        }
+    }
+
+    if ([string]::IsNullOrEmpty($appData) -or !(Test-Path $appData -PathType Container)) {
+        Write-Warning "Couldn't find AppData path for $sid; skipping taskbar pin cleanup."
     }
     else {
         Write-Title "Setting '$Browser' taskbar shortcut for '$sid'..."
@@ -108,13 +132,19 @@ foreach ($userKey in (Get-RegUserPaths -NoDefault).PsPath) {
         Write-Output "Clearing current shortcuts..."
         $taskBarAppData = "$appData\$taskBarLocation"
         if (Test-Path $taskBarAppData -PathType Leaf) {
-            Write-Output "Deleting TaskBar file..."
+            Write-Output "Deleting corrupted TaskBar file..."
             Remove-Item -Path $taskBarAppData -Force
         }
-        Get-ChildItem $taskBarAppData | Remove-Item -Force -Recurse
+        if (!(Test-Path $taskBarAppData -PathType Container)) {
+            Write-Output "Creating TaskBar folder..."
+            New-Item -Path $taskBarAppData -ItemType Directory -Force | Out-Null
+        } else {
+            Get-ChildItem $taskBarAppData | Remove-Item -Force -Recurse
+        }
 
         Write-Output "Adding new shortcuts..."
-        Copy-Item -Path "$tmp\*" -Destination $taskBarAppData -Force
+        # make sure its a folder with a backslash
+        Copy-Item -Path "$tmp\*" -Destination "$taskBarAppData\" -Force
 
         Write-Output "Changing in Registry..."
         $key = "$(Convert-Path $userKey)\$rootKey"
@@ -124,4 +154,4 @@ foreach ($userKey in (Get-RegUserPaths -NoDefault).PsPath) {
     }
 }
 
-Stop-Process -Name explorer -Force
+Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue

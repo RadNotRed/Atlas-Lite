@@ -1,6 +1,16 @@
-if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) { 
-  Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs; exit 
-}
+# On Windows 24H2/25H2, a sleep/wake cycle can cause Windows to recreate an existing user profile
+# from the Default template. This re-triggers the RunOnce entry and runs this script a second time,
+# which forces a logoff and wipes the user's settings.
+#
+# To prevent this, we write a completion marker to HKLM after setup finishes (see bottom of script).
+# HKLM survives profile resets; HKCU lives inside the profile folder and would be wiped along with it.
+#
+# The marker key is the user's SID (Security Identifier) — a unique, permanent ID assigned to each
+# Windows account. Unlike a username, the SID never changes even if the profile is deleted and
+# recreated. Using it as the key name lets us track setup state per user on shared machines.
+$sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+$marker = Get-ItemProperty -Path 'HKLM:\SOFTWARE\AtlasOS\UserSetup' -Name $sid -ErrorAction SilentlyContinue
+if ($marker.$sid -eq 1) { exit }
 
 $windir = [Environment]::GetFolderPath('Windows')
 & "$windir\AtlasModules\initPowerShell.ps1"
@@ -20,37 +30,75 @@ Write-Host $title -ForegroundColor Yellow
 Write-Host $('-' * ($title.length + 3)) -ForegroundColor Yellow
 Write-Host "You'll be logged out in 10 to 20 seconds, and once you login again, your new account will be ready for use."
 
-# Disable Windows 11 context menu & 'Gallery' in File Explorer
-if ([System.Environment]::OSVersion.Version.Build -ge 22000) {
-    & "$atlasDesktop\4. Interface Tweaks\Context Menus\Windows 11\Old Context Menu (default).cmd" /silent
-    & "$atlasDesktop\4. Interface Tweaks\File Explorer Customization\Gallery\Disable Gallery (default).cmd" /silent
+$env:ATLAS_USER_CONTEXT = "1"
+try {
+    # Disable Windows 11 context menu & 'Gallery' in File Explorer
+    if ([System.Environment]::OSVersion.Version.Build -ge 22000) {
+        & "$atlasDesktop\4. Interface Tweaks\Context Menus\Windows 11\Old Context Menu (default).cmd" /silent
+        & "$atlasDesktop\4. Interface Tweaks\File Explorer Customization\Gallery\Disable Gallery (default).cmd" /silent
 
-    # Set ThemeMRU (recent themes)
-    Set-Theme -Path "$([Environment]::GetFolderPath('Windows'))\Resources\Themes\atlas-v0.5.x-dark.theme"
-    Set-ThemeMRU | Out-Null
+        # Set ThemeMRU (recent themes)
+        Set-Theme -Path "$([Environment]::GetFolderPath('Windows'))\Resources\Themes\atlas-v0.5.x-dark.theme"
+        Set-ThemeMRU | Out-Null
+    }
+
+    # Set lockscreen wallpaper
+    try {
+        Set-LockscreenImage
+    }
+    catch {
+        Write-Warning "Failed to set lockscreen image: $($_.Exception.Message)"
+    }
+
+    # Disable 'Network' in navigation pane
+    & "$atlasDesktop\3. General Configuration\File Sharing\Network Navigation Pane\Disable Network Navigation Pane (default).cmd" /silent
+
+    # Disable Automatic Folder Discovery
+    & "$atlasDesktop\4. Interface Tweaks\File Explorer Customization\Automatic Folder Discovery\Disable Automatic Folder Discovery (default).cmd" /silent
+
+    # Set visual effects
+    & "$atlasDesktop\4. Interface Tweaks\Visual Effects (Animations)\Atlas Visual Effects (default).cmd" /silent
+}
+finally {
+    Remove-Item "Env:\ATLAS_USER_CONTEXT" -ErrorAction SilentlyContinue
 }
 
-# Set lockscreen wallpaper
-Set-LockscreenImage
+# Set taskbar pins
+$browser = $null
+$setupOptionsPath = "HKLM:\SOFTWARE\AtlasOS\SetupOptions"
+$allowedBrowsers = @("Brave", "Firefox", "LibreWolf", "Google Chrome", "Microsoft Edge")
 
-# Disable 'Network' in navigation pane
-& "$atlasDesktop\3. General Configuration\File Sharing\Network Navigation Pane\Disable Network Navigation Pane (default).cmd" /silent
+try {
+    $browser = Get-ItemPropertyValue -Path $setupOptionsPath -Name "Browser" -ErrorAction Stop
+}
+catch {
+    Write-Warning "Couldn't read browser selection from '$setupOptionsPath'. Falling back to default taskbar pins."
+}
 
-# Disable Automatic Folder Discovery
-& "$atlasDesktop\4. Interface Tweaks\File Explorer Customization\Automatic Folder Discovery\Disable Automatic Folder Discovery (default).cmd" /silent
+if (![string]::IsNullOrWhiteSpace($browser) -and $browser -notin $allowedBrowsers) {
+    Write-Warning "Invalid browser value '$browser' found in '$setupOptionsPath'. Falling back to default taskbar pins."
+    $browser = $null
+}
 
-# Set visual effects
-& "$atlasDesktop\4. Interface Tweaks\Visual Effects (Animations)\Atlas Visual Effects (default).cmd" /silent
+if ([string]::IsNullOrWhiteSpace($browser)) {
+    $browser = $null
+}
 
-# Set taskbar pins 
-$valueName = "Browser"
-$value = Get-ItemProperty -Path "HKLM:\SOFTWARE\AtlasOS\SetupOptions" -Name $valueName -ErrorAction Stop
-$Browser = $value.$valueName
-$Browser
+& "$atlasModules\Scripts\taskbarPins.ps1" $browser
+$null = New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search' -Force -ErrorAction SilentlyContinue
+Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search' -Name 'SearchboxTaskbarMode' -Value 1 -Type DWord -Force
 
-& "$atlasModules\Scripts\taskbarPins.ps1" $Browser
-Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" -Name "SearchboxTaskbarMode" -Value 1
+# Write the completion marker for this user so the guard above exits early on any future re-run.
+# -Force creates the registry key if it does not exist yet (idempotent, no pre-check needed).
+# This script runs as SYSTEM via RunOnce, so HKLM writes succeed without elevation issues.
+try {
+    $null = New-Item -Path 'HKLM:\SOFTWARE\AtlasOS\UserSetup' -Force -ErrorAction SilentlyContinue
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\AtlasOS\UserSetup' -Name $sid -Value 1 -Type DWord -Force
+}
+catch {
+    Write-Warning "Failed to write setup marker for SID '$sid': $($_.Exception.Message)"
+}
 
 # Leave
-Start-Sleep 5 
+Start-Sleep 5
 logoff

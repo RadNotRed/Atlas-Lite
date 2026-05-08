@@ -3,15 +3,23 @@ set "settingName=Indexing"
 set "stateValue=2"
 set "scriptPath=%~f0"
 set indexConfPath="%windir%\AtlasModules\Scripts\indexConf.cmd"
+set "silentMode=0"
+for %%a in (%*) do (
+    if /I "%%a"=="/silent" set "silentMode=1"
+    if /I "%%a"=="-silent" set "silentMode=1"
+    if /I "%%a"=="/quiet" set "silentMode=1"
+)
 
 whoami /user | find /i "S-1-5-18" > nul 2>&1 || (
-    call RunAsTI.cmd "%~f0" %*
+    call "%windir%\AtlasModules\Scripts\RunAsTI.cmd" "%~f0" %*
     exit /b
 )
 
 if not exist "%indexConfPath%" (
-    echo The 'indexConf.cmd' script wasn't found in AtlasModules.
-    pause
+    if "%silentMode%"=="0" (
+        echo The 'indexConf.cmd' script wasn't found in AtlasModules.
+        pause
+    )
     exit /b 1
 )
 set "indexConf=call %indexConfPath%"
@@ -41,7 +49,7 @@ for /f "usebackq delims=" %%a in (`dir /b /a:d "%SystemDrive%\Users"`) do (
 reg add "HKLM\SOFTWARE\Microsoft\Windows Search" /v SetupCompletedSuccessfully /t REG_DWORD /d 0 /f > nul
 
 set regCmd=^>nul reg add "HKLM\Software\Microsoft\Windows Search\Gather\Windows\SystemIndex" /v "RespectPowerModes" /t REG_DWORD /d 
-if "%~1"=="/silent" (%regCmd% "0" /f & exit /b)
+if "%silentMode%"=="1" (%regCmd% "0" /f & exit /b)
 
 echo.
 :: Respect Power Settings when Search Indexing to prevent performance loss during gaming or battery drain
