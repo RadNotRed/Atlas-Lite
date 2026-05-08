@@ -43,7 +43,7 @@ for %%a in (
 	"Microsoft_Bluetooth_AvrcpTransport"
 	"RFCOMM"
 ) do (
-	call "%windir%\AtlasModules\Scripts\setSvc.cmd" %%~a 4
+	call "%windir%\AtlasModules\Scripts\setSvc.cmd" %%~a 4 > nul 2>&1
 )
 
 :: Seems to not exist sometimes

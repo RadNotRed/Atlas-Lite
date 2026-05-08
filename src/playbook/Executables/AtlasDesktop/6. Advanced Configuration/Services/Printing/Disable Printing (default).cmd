@@ -69,8 +69,8 @@ for /f "tokens=6 delims=[.] " %%a in ('ver') do (
 if "%~1" == "/justcontext" exit /b
 
 echo Disabling services...
-call "%windir%\AtlasModules\Scripts\setSvc.cmd" Spooler 4
-call "%windir%\AtlasModules\Scripts\setSvc.cmd" PrintWorkFlowUserSvc 4
+call "%windir%\AtlasModules\Scripts\setSvc.cmd" Spooler 4 > nul 2>&1
+call "%windir%\AtlasModules\Scripts\setSvc.cmd" PrintWorkFlowUserSvc 4 > nul 2>&1
 
 call "%windir%\AtlasModules\Scripts\settingsPages.cmd" /hide printers
 

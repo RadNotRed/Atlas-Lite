@@ -4,12 +4,11 @@ description: Executes script to configure power settings for the best performanc
 actions:
     # Disable power saving features
   - !cmd:
-    command: '"AtlasDesktop\3. General Configuration\Power-saving\Disable Power-saving.cmd" /silent'
+    command: '"AtlasDesktop\3. General Configuration\Power-saving\Disable Power-saving (default).cmd" /silent'
     exeDir: true
     wait: true
     weight: 20
     runas: currentUserElevated
-    option: 'disable-power-saving'
 
     # Disable Fast Startup
   - !registryValue:
@@ -28,5 +27,10 @@ actions:
     runas: currentUserElevated
     option: 'disable-hibernation'
 
-    # Set 'Balanced' power scheme if keeping power saving
-  - !run: {exe: 'powercfg.exe', args: '/setactive "381b4222-f694-41f0-9685-ff5bb260df2e"', option: '!disable-power-saving'}
+    # Disable sleep
+  - !cmd:
+    command: '"AtlasDesktop\3. General Configuration\Sleep\Disable Sleep (default).cmd" /silent'
+    exeDir: true
+    wait: true
+    weight: 20
+    runas: currentUserElevated

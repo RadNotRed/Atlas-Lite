@@ -37,10 +37,27 @@ actions:
     wait: true
     runas: currentUserElevated
 
-  - !writeStatus: {status: 'Configuring Indexing'}
+  - !writeStatus: {status: 'Disabling Indexing'}
   - !powerShell:
     command: |
-      Start-Process -FilePath (Join-Path $env:windir 'AtlasDesktop\3. General Configuration\Search Indexing\Minimal Search Indexing (default).cmd') -ArgumentList '/silent' -Wait
+      Start-Process -FilePath (Join-Path $env:windir 'AtlasDesktop\3. General Configuration\Search Indexing\Disable Search Indexing (default).cmd') -ArgumentList '/silent' -Wait
+    exeDir: true
+    wait: true
+    runas: currentUserElevated
+
+  - !writeStatus: {status: 'Disabling optional services'}
+  - !powerShell:
+    command: |
+      $scripts = @(
+          'AtlasDesktop\6. Advanced Configuration\Services\Printing\Disable Printing (default).cmd',
+          'AtlasDesktop\6. Advanced Configuration\Services\Bluetooth\Disable Bluetooth (default).cmd',
+          'AtlasDesktop\6. Advanced Configuration\Services\Network Discovery\Disable Network Discovery Services (default).cmd',
+          'AtlasDesktop\6. Advanced Configuration\Services\Lanman Workstation (SMB)\Disable Lanman Workstation (default).cmd',
+          'AtlasDesktop\6. Advanced Configuration\Services\Superfetch\Disable SuperFetch (default).cmd'
+      )
+      foreach ($script in $scripts) {
+          Start-Process -FilePath (Join-Path $env:windir $script) -ArgumentList '/silent' -Wait
+      }
     exeDir: true
     wait: true
     runas: currentUserElevated
@@ -52,18 +69,30 @@ actions:
   - !writeStatus: {status: 'Configuring services'}
 
     # ------ Microsoft recommendation - 'OK to disable' ------
-  - !service: {name: 'OneSyncSvc', operation: change, startup: 4}
-  - !service: {name: 'TrkWks', operation: change, startup: 4}
-  - !service: {name: 'PcaSvc', operation: change, startup: 4}
-  - !service: {name: 'DiagTrack', operation: change, startup: 4}
+  - !service: {name: 'OneSyncSvc', operation: change, startup: 4, ignoreErrors: true}
+  - !service: {name: 'TrkWks', operation: change, startup: 4, ignoreErrors: true}
+  - !service: {name: 'PcaSvc', operation: change, startup: 4, ignoreErrors: true}
+  - !service: {name: 'DiagTrack', operation: change, startup: 4, ignoreErrors: true}
 
     # ------ Microsoft recommendation - 'Do not disable' -----
-  - !service: {name: 'diagnosticshub.standardcollector.service', operation: change, startup: 4}
-  - !service: {name: 'WerSvc', operation: change, startup: 4}
+  - !service: {name: 'diagnosticshub.standardcollector.service', operation: change, startup: 4, ignoreErrors: true}
+  - !service: {name: 'WerSvc', operation: change, startup: 4, ignoreErrors: true}
 
     # ------- Microsoft recommendation - 'No guidance' ------
-  - !service: {name: 'wercplsupport', operation: change, startup: 4}
-  - !service: {name: 'UCPD', operation: change, startup: 4}
+  - !service: {name: 'wercplsupport', operation: change, startup: 4, ignoreErrors: true}
+  - !service: {name: 'UCPD', operation: change, startup: 4, ignoreErrors: true}
+
+    # ------ Atlas Lite service defaults ------
+  - !service: {name: 'CscService', operation: change, startup: 4, ignoreErrors: true}
+  - !service: {name: 'MapsBroker', operation: change, startup: 3, ignoreErrors: true}
+  - !service: {name: 'RemoteAccess', operation: change, startup: 4, ignoreErrors: true}
+  - !service: {name: 'RemoteRegistry', operation: change, startup: 4, ignoreErrors: true}
+  - !service: {name: 'StorSvc', operation: change, startup: 3, ignoreErrors: true}
+  - !service: {name: 'SharedAccess', operation: change, startup: 4, ignoreErrors: true}
+  - !service: {name: 'TermService', operation: change, startup: 3, ignoreErrors: true}
+  - !service: {name: 'TroubleshootingSvc', operation: change, startup: 3, ignoreErrors: true}
+  - !service: {name: 'seclogon', operation: change, startup: 3, ignoreErrors: true}
+  - !service: {name: 'ssh-agent', operation: change, startup: 4, ignoreErrors: true}
 
   ##############################################################################################
   ## DRIVERS                                                                                  ##
@@ -71,7 +100,7 @@ actions:
 
   - !writeStatus: {status: 'Configuring drivers'}
 
-  - !service: {name: 'GpuEnergyDrv', operation: change, startup: 4}
+  - !service: {name: 'GpuEnergyDrv', operation: change, startup: 4, ignoreErrors: true}
     # NetBios support can be enabled with the file sharing script
-  - !service: {name: 'NetBT', operation: change, startup: 4}
-  - !service: {name: 'Telemetry', operation: change, startup: 4}
+  - !service: {name: 'NetBT', operation: change, startup: 4, ignoreErrors: true}
+  - !service: {name: 'Telemetry', operation: change, startup: 4, ignoreErrors: true}

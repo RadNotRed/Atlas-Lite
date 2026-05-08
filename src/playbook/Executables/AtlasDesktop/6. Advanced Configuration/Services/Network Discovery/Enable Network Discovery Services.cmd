@@ -2,7 +2,7 @@
 :: Change to match the setting name (e.g., Sleep, Indexing, etc.)
 set "settingName=NetworkDiscovery"
 :: Change to 0 (Disabled) or 1 (Enabled/Minimal) etc
-set "stateValue=0"
+set "stateValue=1"
 set "scriptPath=%~f0"
 
 set "___args="%~f0" %*"
@@ -22,15 +22,24 @@ reg add "HKLM\SOFTWARE\AtlasOS\Services\%settingName%" /v path /t REG_SZ /d "%sc
 
 if not "%~1"=="/silent" call "%windir%\AtlasModules\Scripts\serviceWarning.cmd" %*
 
-:: Unpin 'Network' from Explorer sidebar
-call "%windir%\AtlasDesktop\3. General Configuration\File Sharing\Network Navigation Pane\Disable Network Navigation Pane (default).cmd" > nul
+:main
+:: Enable Lanman Workstation (SMB) as a dependency
+call "%windir%\AtlasDesktop\6. Advanced Configuration\Services\Lanman Workstation (SMB)\Enable Lanman Workstation.cmd" /silent
+:: Enable EventLog as a dependency
+call setSvc.cmd eventlog 2
 
-call setSvc.cmd fdPHost 4
-call setSvc.cmd FDResPub 4
-call setSvc.cmd lmhosts 4
-call setSvc.cmd SSDPSRV 4
-if "%~1"=="/silent" exit /b
+call setSvc.cmd fdPHost 3
+call setSvc.cmd FDResPub 3
+call setSvc.cmd lmhosts 3
+call setSvc.cmd netman 3
+for /f "tokens=6 delims=[.] " %%a in ('ver') do (
+    if %%a LSS 22000 (call setSvc.cmd NlaSvc 2) else (call setSvc.cmd NlaSvc 3)
+)
+call setSvc.cmd SSDPSRV 3
 
+if "%~1" == "/silent" exit /b
+
+echo]
 echo Finished, please reboot your device for changes to apply.
 pause
 exit /b

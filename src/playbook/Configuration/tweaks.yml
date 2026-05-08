@@ -154,7 +154,9 @@ actions:
   - !task: {path: 'tweaks\qol\disable-mouse-accel.yml'}
   - !task: {path: 'tweaks\qol\disable-settings-tips.yml'}
   - !task: {path: 'tweaks\qol\disable-spell-checking.yml'}
+  - !task: {path: 'tweaks\qol\disable-resume.yml'}
   - !task: {path: 'tweaks\qol\disable-store-auto-updates.yml'}
+  - !task: {path: 'tweaks\qol\disable-store-startup-task.yml'}
   - !task: {path: 'tweaks\qol\disable-store-search-recommendations.yml'}
   - !task: {path: 'tweaks\qol\disable-touch-keyboard-features.yml'}
   - !task: {path: 'tweaks\qol\disable-touch-visual-feedback.yml'}
@@ -165,6 +167,21 @@ actions:
   - !task: {path: 'tweaks\qol\hide-disabled-disconnected-sounds.yml'}
   - !task: {path: 'tweaks\qol\show-all-tasks-control-panel.yml'}
   - !task: {path: 'tweaks\qol\visual-effects.yml'}
+  - !cmd:
+    command: '"AtlasDesktop\4. Interface Tweaks\Snap Layouts\Disable Snap Layouts (default).cmd" /silent'
+    exeDir: true
+    wait: true
+    runas: currentUserElevated
+  - !cmd:
+    command: '"AtlasDesktop\4. Interface Tweaks\Edge Swipe\Disallow Edge Swipe (default).cmd" /silent'
+    exeDir: true
+    wait: true
+    runas: currentUserElevated
+  - !cmd:
+    command: '"AtlasDesktop\4. Interface Tweaks\Lock Screen\Hide Lock Screen (default).cmd" /silent'
+    exeDir: true
+    wait: true
+    runas: currentUserElevated
   - !task: {path: 'tweaks\qol\disable-tips.yml'}
   - !task: {path: 'tweaks\qol\disable-win11-settings-banner.yml'}
   - !task: {path: 'tweaks\qol\disable-screen-capture-hotkey.yml', option: 'remove-snipping-tool'}
@@ -175,9 +192,11 @@ actions:
   # -------------------------------------------------------------------------- #
   #  qol\appearance                                                            #
   # -------------------------------------------------------------------------- #
-  - !task: {path: 'tweaks\qol\appearance\blue-tooltips.yml'}
-  - !task: {path: 'tweaks\qol\appearance\atlas-theme.yml'}
-  - !task: {path: 'tweaks\qol\appearance\disallow-theme-changes.yml'}
+  - !registryValue: { path: 'HKLM\SOFTWARE\AtlasOS\SetupOptions', value: 'AtlasBranding', data: "1", type: REG_DWORD, option: 'atlas-branding-enable'}
+  - !registryValue: { path: 'HKLM\SOFTWARE\AtlasOS\SetupOptions', value: 'AtlasBranding', data: "0", type: REG_DWORD, option: 'atlas-branding-disable'}
+  - !task: {path: 'tweaks\qol\appearance\blue-tooltips.yml', option: 'atlas-branding-enable'}
+  - !task: {path: 'tweaks\qol\appearance\atlas-theme.yml', option: 'atlas-branding-enable'}
+  - !task: {path: 'tweaks\qol\appearance\disallow-theme-changes.yml', option: 'atlas-branding-enable'}
 
   # -------------------------------------------------------------------------- #
   #  qol\windows-update                                                        #
@@ -236,6 +255,21 @@ actions:
   - !task: {path: 'tweaks\qol\explorer\classic-search.yml'}
   - !task: {path: 'tweaks\qol\explorer\dont-show-office-files.yml'}
   - !task: {path: 'tweaks\qol\explorer\use-compact-mode.yml'}
+  - !cmd:
+    command: '"AtlasDesktop\4. Interface Tweaks\File Explorer Customization\App Icons on Thumbnails\Disable App Icons on Thumbnails (default).cmd" /silent'
+    exeDir: true
+    wait: true
+    runas: currentUserElevated
+  - !cmd:
+    command: '"AtlasDesktop\4. Interface Tweaks\File Explorer Customization\Quick Access\Remove Quick Access (default).cmd" /silent'
+    exeDir: true
+    wait: true
+    runas: currentUserElevated
+  - !cmd:
+    command: '"AtlasDesktop\4. Interface Tweaks\File Explorer Customization\Compact View\Disable Compact View (default).cmd" /silent'
+    exeDir: true
+    wait: true
+    runas: currentUserElevated
   - !task: {path: 'tweaks\qol\explorer\disable-gallery.yml'}
   - !task: {path: 'tweaks\qol\explorer\disable-home.yml'}
   - !task: {path: 'tweaks\qol\explorer\debloat-send-to.yml'}
@@ -343,7 +377,7 @@ actions:
   - !task: {path: 'tweaks\scripts\script-core-isolation.yml'}
   - !task: {path: 'tweaks\scripts\script-mitigations.yml'}
   - !task: {path: 'tweaks\scripts\script-devices.yml'}
-  - !task: {path: 'tweaks\scripts\script-pfp.yml'}
+  - !task: {path: 'tweaks\scripts\script-pfp.yml', option: 'atlas-branding-enable'}
   - !task: {path: 'tweaks\scripts\script-backup2.yml'}
   - !task: {path: 'tweaks\scripts\script-clientcbs.yml'}
 
@@ -367,4 +401,4 @@ actions:
   - !task: {path: 'tweaks\misc\add-music-videos-to-home.yml'}
   - !task: {path: 'tweaks\scripts\script-power.yml'} # Done last on purpose
   - !task: {path: 'tweaks\misc\enable-notifications.yml'}
-  - !task: {path: 'tweaks\misc\config-oem-information.yml'}
+  - !task: {path: 'tweaks\misc\config-oem-information.yml', option: 'atlas-branding-enable'}

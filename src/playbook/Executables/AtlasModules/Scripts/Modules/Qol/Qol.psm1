@@ -103,7 +103,7 @@ function Remove-ExtractFromContextMenu {
 
 # Function to remove printing from context menus
 function Remove-PrintingFromContextMenus {
-   & "$windir\AtlasDesktop\6. Advanced Configuration\Services\Printing\Disable Printing.cmd" /justcontext
+   & "$windir\AtlasDesktop\6. Advanced Configuration\Services\Printing\Disable Printing (default).cmd" /justcontext
 }
 
 # Function to show more details by default on file transfers

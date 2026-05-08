@@ -82,8 +82,38 @@ actions:
   # - !appx: {name: 'Microsoft.YourPhone*', type: family}
   - !powerShell:
     command: |
-      Get-AppxPackage Microsoft.YourPhone* | Remove-AppxPackage
-      Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -eq 'Microsoft.YourPhone' } | Remove-AppxProvisionedPackage -Online
+      taskkill /f /im CrossDeviceResume.exe 2>$null
+      taskkill /f /im PhoneExperienceHost.exe 2>$null
+      taskkill /f /im RuntimeBroker.exe 2>$null
+
+      $packageNames = @(
+          'Microsoft.YourPhone*',
+          'MicrosoftWindows.CrossDevice*',
+          'Microsoft.CrossDevice*'
+      )
+
+      foreach ($packageName in $packageNames) {
+          Get-AppxPackage -AllUsers $packageName | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
+      }
+
+      Get-AppxProvisionedPackage -Online |
+          Where-Object {
+              $_.DisplayName -like 'Microsoft.YourPhone*' -or
+              $_.DisplayName -like 'MicrosoftWindows.CrossDevice*' -or
+              $_.DisplayName -like 'Microsoft.CrossDevice*'
+          } |
+          Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
+
+      foreach ($userKey in Get-ChildItem 'Registry::HKEY_USERS' -ErrorAction SilentlyContinue) {
+          $crossDevicePaths = @(
+              'Software\Microsoft\Windows\CurrentVersion\CrossDeviceResume',
+              'SOFTWARE\Microsoft\PolicyManager\default\Connectivity\DisableCrossDeviceResume'
+          )
+
+          foreach ($relativePath in $crossDevicePaths) {
+              Remove-Item -Path (Join-Path $userKey.PSPath $relativePath) -Recurse -Force -ErrorAction SilentlyContinue
+          }
+      }
     runas: currentUserElevated
     wait: true
 

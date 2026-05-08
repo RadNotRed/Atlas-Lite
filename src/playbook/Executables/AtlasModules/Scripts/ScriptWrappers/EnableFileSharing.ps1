@@ -9,7 +9,7 @@ $fileSharingConfigPath = "$([Environment]::GetFolderPath('Windows'))\AtlasDeskto
 Enable-NetAdapterBinding -Name "*" -ComponentID ms_msclient, ms_server, ms_lltdio, ms_rspndr | Out-Null
 
 # Enable Network Discovery services and its dependencies
-& "$networkDiscoveryConfigPath\Enable Network Discovery Services (default).cmd" /silent
+& "$networkDiscoveryConfigPath\Enable Network Discovery Services.cmd" /silent
 
 # Enable NetBios over TCP/IP
 $interfaces = Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Services\NetBT\Parameters\Interfaces" -Recurse | Where-Object { $_.GetValue("NetbiosOptions") -ne $null }

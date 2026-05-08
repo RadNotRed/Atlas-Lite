@@ -1,0 +1,55 @@
+---
+title: Disable Microsoft Store Startup Task
+description: Prevents Microsoft Store background startup entries from running automatically
+actions:
+  - !powerShell:
+    command: |
+      $storePatterns = @(
+          'Microsoft.WindowsStore',
+          'WindowsStore',
+          'WinStore'
+      )
+
+      foreach ($userKey in Get-ChildItem 'Registry::HKEY_USERS' -ErrorAction SilentlyContinue) {
+          $startupApprovedPath = Join-Path $userKey.PSPath 'Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved'
+          if (Test-Path $startupApprovedPath) {
+              Get-ChildItem $startupApprovedPath -ErrorAction SilentlyContinue | ForEach-Object {
+                  foreach ($property in (Get-ItemProperty $_.PSPath).PSObject.Properties) {
+                      if ($property.Name -in @('PSPath', 'PSParentPath', 'PSChildName', 'PSDrive', 'PSProvider')) { continue }
+                      if ($storePatterns | Where-Object { $property.Name -like "*$_*" }) {
+                          Remove-ItemProperty -Path $_.PSPath -Name $property.Name -ErrorAction SilentlyContinue
+                      }
+                  }
+              }
+          }
+
+          $runPath = Join-Path $userKey.PSPath 'Software\Microsoft\Windows\CurrentVersion\Run'
+          if (Test-Path $runPath) {
+              foreach ($property in (Get-ItemProperty $runPath).PSObject.Properties) {
+                  if ($property.Name -in @('PSPath', 'PSParentPath', 'PSChildName', 'PSDrive', 'PSProvider')) { continue }
+                  $value = [string]$property.Value
+                  if (($storePatterns | Where-Object { $property.Name -like "*$_*" -or $value -like "*$_*" })) {
+                      Remove-ItemProperty -Path $runPath -Name $property.Name -ErrorAction SilentlyContinue
+                  }
+              }
+          }
+
+          $storeSystemAppData = Join-Path $userKey.PSPath 'Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\SystemAppData\Microsoft.WindowsStore_8wekyb3d8bbwe'
+          if (Test-Path $storeSystemAppData) {
+              Get-ChildItem $storeSystemAppData -Recurse -ErrorAction SilentlyContinue |
+                  Where-Object { $_.PSChildName -match 'Startup|Background' } |
+                  ForEach-Object {
+                      Set-ItemProperty -Path $_.PSPath -Name 'State' -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
+                      Set-ItemProperty -Path $_.PSPath -Name 'Disabled' -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
+                  }
+          }
+      }
+
+      Get-ScheduledTask -ErrorAction SilentlyContinue |
+          Where-Object {
+              $_.TaskName -match 'WindowsStore|WinStore|Microsoft Store' -or
+              $_.TaskPath -match 'WindowsStore|WinStore|Microsoft Store'
+          } |
+          Disable-ScheduledTask -ErrorAction SilentlyContinue | Out-Null
+    wait: true
+    runas: currentUserElevated

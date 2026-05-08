@@ -10,6 +10,13 @@ actions:
     runas: currentUserElevated
     option: 'auto-updates-disable'
 
+  - !cmd:
+    command: '"AtlasDesktop\3. General Configuration\Pause Updates\Pause Windows Updates.cmd" /silent'
+    exeDir: true
+    wait: true
+    runas: currentUserElevated
+    option: 'auto-updates-disable'
+
     # Prevent DevHome & Outlook from re-installing
   - !registryKey: {path: 'HKLM\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate'}
   - !registryValue: {path: 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler\DevHomeUpdate', value: 'workCompleted', type: REG_DWORD, data: '1'}

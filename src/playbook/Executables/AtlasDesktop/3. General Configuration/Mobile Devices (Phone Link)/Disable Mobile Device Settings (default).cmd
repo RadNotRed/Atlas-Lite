@@ -27,14 +27,14 @@ call "%windir%\AtlasModules\Scripts\settingsPages.cmd" /hide mobile-devices
 call "%windir%\AtlasModules\Scripts\setSvc.cmd" CDPSvc 4 > nul 2>&1
 
 taskkill /f /im RuntimeBroker.exe > nul 2>&1
+taskkill /f /im CrossDeviceResume.exe > nul 2>&1
 taskkill /f /im PhoneExperienceHost.exe > nul 2>&1
-powershell -NoP -NonI "Get-AppxPackage -AllUsers Microsoft.YourPhone* | Remove-AppxPackage -AllUsers"
-powershell -NoP -NonI "Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -eq 'Microsoft.YourPhone' } | Remove-AppxProvisionedPackage -Online"
+powershell -NoP -NonI "$packages = @('Microsoft.YourPhone*','MicrosoftWindows.CrossDevice*','Microsoft.CrossDevice*'); foreach ($package in $packages) { Get-AppxPackage -AllUsers $package | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue }; Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -like 'Microsoft.YourPhone*' -or $_.DisplayName -like 'MicrosoftWindows.CrossDevice*' -or $_.DisplayName -like 'Microsoft.CrossDevice*' } | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue"
 
 if "%~1"=="/silent" exit /b
 
 choice /c:yn /n /m "Would you like to attempt Phone Link removal again? [Y/N] "
-if %errorlevel%==1 powershell -NoP -NonI "Get-AppxPackage -AllUsers Microsoft.YourPhone* | Remove-AppxPackage -AllUsers"
+if %errorlevel%==1 powershell -NoP -NonI "$packages = @('Microsoft.YourPhone*','MicrosoftWindows.CrossDevice*','Microsoft.CrossDevice*'); foreach ($package in $packages) { Get-AppxPackage -AllUsers $package | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue }"
 
 choice /c:yn /n /m "Would you like to disable Store auto-updates? [Y/N] "
 if %errorlevel%==1 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsStore\WindowsUpdate" /v "AutoDownload" /t REG_DWORD /d "2" /f > nul

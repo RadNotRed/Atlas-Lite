@@ -16,6 +16,15 @@ $windir = [Environment]::GetFolderPath('Windows')
 & "$windir\AtlasModules\initPowerShell.ps1"
 $atlasDesktop = "$windir\AtlasDesktop"
 $atlasModules = "$windir\AtlasModules"
+$setupOptionsPath = "HKLM:\SOFTWARE\AtlasOS\SetupOptions"
+$atlasBranding = 1
+
+try {
+    $atlasBranding = Get-ItemPropertyValue -Path $setupOptionsPath -Name "AtlasBranding" -ErrorAction Stop
+}
+catch {
+    Write-Warning "Couldn't read Atlas branding selection from '$setupOptionsPath'. Falling back to Atlas branding."
+}
 
 $title = 'Preparing Atlas user settings...'
 
@@ -37,17 +46,21 @@ try {
         & "$atlasDesktop\4. Interface Tweaks\Context Menus\Windows 11\Old Context Menu (default).cmd" /silent
         & "$atlasDesktop\4. Interface Tweaks\File Explorer Customization\Gallery\Disable Gallery (default).cmd" /silent
 
-        # Set ThemeMRU (recent themes)
-        Set-Theme -Path "$([Environment]::GetFolderPath('Windows'))\Resources\Themes\atlas-v0.5.x-dark.theme"
-        Set-ThemeMRU | Out-Null
+        if ($atlasBranding -eq 1) {
+            # Set ThemeMRU (recent themes)
+            Set-Theme -Path "$([Environment]::GetFolderPath('Windows'))\Resources\Themes\atlas-v0.5.x-dark.theme"
+            Set-ThemeMRU | Out-Null
+        }
     }
 
-    # Set lockscreen wallpaper
-    try {
-        Set-LockscreenImage
-    }
-    catch {
-        Write-Warning "Failed to set lockscreen image: $($_.Exception.Message)"
+    if ($atlasBranding -eq 1) {
+        # Set lockscreen wallpaper
+        try {
+            Set-LockscreenImage
+        }
+        catch {
+            Write-Warning "Failed to set lockscreen image: $($_.Exception.Message)"
+        }
     }
 
     # Disable 'Network' in navigation pane
@@ -65,7 +78,6 @@ finally {
 
 # Set taskbar pins
 $browser = $null
-$setupOptionsPath = "HKLM:\SOFTWARE\AtlasOS\SetupOptions"
 $allowedBrowsers = @("Brave", "Firefox", "LibreWolf", "Google Chrome", "Microsoft Edge")
 
 try {

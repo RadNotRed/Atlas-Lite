@@ -1,6 +1,6 @@
 @echo off
 :: Change to match the setting name (e.g., Sleep, Indexing, etc.)
-set "settingName=LanmanWorkstation"
+set "settingName=NetworkDiscovery"
 :: Change to 0 (Disabled) or 1 (Enabled/Minimal) etc
 set "stateValue=0"
 set "scriptPath=%~f0"
@@ -22,18 +22,15 @@ reg add "HKLM\SOFTWARE\AtlasOS\Services\%settingName%" /v path /t REG_SZ /d "%sc
 
 if not "%~1"=="/silent" call "%windir%\AtlasModules\Scripts\serviceWarning.cmd" %*
 
-call setSvc.cmd KSecPkg 4
-call setSvc.cmd LanmanServer 4
-call setSvc.cmd LanmanWorkstation 4
-call setSvc.cmd mrxsmb 4
-call setSvc.cmd mrxsmb20 4
-call setSvc.cmd rdbss 3
-call setSvc.cmd srv2 4
+:: Unpin 'Network' from Explorer sidebar
+call "%windir%\AtlasDesktop\3. General Configuration\File Sharing\Network Navigation Pane\Disable Network Navigation Pane (default).cmd" > nul
 
-DISM /Online /Disable-Feature /FeatureName:"SmbDirect" /NoRestart
+call setSvc.cmd fdPHost 4 > nul 2>&1
+call setSvc.cmd FDResPub 4 > nul 2>&1
+call setSvc.cmd lmhosts 4 > nul 2>&1
+call setSvc.cmd SSDPSRV 4 > nul 2>&1
 if "%~1"=="/silent" exit /b
 
-echo]
 echo Finished, please reboot your device for changes to apply.
 pause
 exit /b
